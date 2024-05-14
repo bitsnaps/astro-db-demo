@@ -52,3 +52,139 @@ All commands are run from the root of the project, from a terminal:
 ## 👀 Want to learn more?
 
 Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+
+## AstroDB
+Installation:
+```
+npx astro add db
+````
+
+There are two ways to create a project in Astro Studio:
+
+1- Use the Astro Studio web UI to create from a new or existing GitHub repository.
+To get started, click the “create project” button in the header and follow the instructions. Astro Studio will connect to your GitHub repository and create a new hosted database for your project.
+
+2- Use the Astro Studio CLI to create from any local Astro project. You can run the following commands to get started:
+``` 
+# Log in to Astro Studio with your GitHub account
+npx astro login
+
+# Link to a new project by following the prompts
+npx astro link
+
+# (Optional) Push your local db configuration to the remote database
+npx astro db push
+```
+
+Define a DB at `db/config.ts`:
+```js
+import { defineDb } from 'astro:db';
+
+export default defineDb({
+  tables: { },
+})
+```
+
+You can also create tables:
+```js
+import { defineDb, defineTable, column } from 'astro:db';
+
+const Comment = defineTable({
+  columns: {
+    author: column.text(),
+    body: column.text(),
+  }
+})
+
+export default defineDb({
+  tables: { Comment },
+})
+```
+
+Seed data `db/seed.ts`:
+```js
+import { db, Comment } from 'astro:db';
+
+export default async function() {
+  await db.insert(Comment).values([
+    { authorId: 1, body: 'Hope you like Astro DB!' },
+    { authorId: 2, body: 'Enjoy!'},
+  ])
+}
+```
+
+Select data `src/pages/index.astro`:
+```js
+---
+import { db, Comment } from 'astro:db';
+
+const comments = await db.select().from(Comment);
+---
+
+<h2>Comments</h2>
+
+{
+  comments.map(({ author, body }) => (
+    <article>
+      <p>Author: {author}</p>
+      <p>{body}</p>
+    </article>
+  ))
+}
+```
+
+Insert data `src/pages/index.astro`:
+```js
+---
+import { db, Comment } from 'astro:db';
+
+if (Astro.request.method === 'POST') {
+  // parse form data
+  const formData = await Astro.request.formData();
+  const author = formData.get('author');
+  const content = formData.get('content');
+  if (typeof author === 'string' && typeof content === 'string') {
+    // insert form data into the Comment table
+    await db.insert(Comment).values({ author, content });
+  }
+}
+
+// render the new list of comments on each request
+const comments = await db.select().from(Comment);
+---
+
+<form method="POST" style="display: grid">
+  <label for="author">Author</label>
+  <input id="author" name="author" />
+
+  <label for="content">Content</label>
+  <textarea id="content" name="content"></textarea>
+
+  <button type="submit">Submit</button>
+</form>
+
+<!--render `comments`-->
+```
+
+
+Push table schema:
+```
+npm run astro db push --remote
+
+# or
+
+npm run astro db push --remote --force-reset
+```
+
+
+Connect to Astro Studio:
+```
+# Build with a remote connection
+astro build --remote
+
+# Develop with a remote connection
+astro dev --remote
+```
+
+
+Read more at [AstroDB](https://docs.astro.build/en/guides/astro-db/).
